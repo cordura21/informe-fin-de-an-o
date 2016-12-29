@@ -1,0 +1,106 @@
+---
+title: "Repaso eventos del 2016"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+### Valuaciones
+Estos son los retorno esperados a fines del 2015 y a fines del 2016 para acciones.
+  
+  
+```{r fig.height=5}
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+my_table <- read.csv('images/retornos esperados.csv', header = TRUE, check.names = FALSE) %>% gather(key = Año, value = Retorno, -`Clase de Activo`,-tipo)
+
+ggplot(my_table %>% filter(tipo == 'Acciones'), aes(y=Retorno, x = `Clase de Activo`, fill=Año)) +
+geom_bar(stat="identity", position = 'dodge') + coord_flip() +
+geom_hline(aes(yintercept = 6.4)) + geom_text(aes(2,5.8,label = 'Prima \n Histórica \n Acciones \n USA 6.5%')) +
+    theme_minimal(base_size = 18)
+
+```
+
+Y lo mismo para bonos:
+  
+```{r fig.height=5}
+
+ggplot(my_table %>% filter(tipo == 'bonos'), aes(y=Retorno, x = `Clase de Activo`, fill=Año)) +
+geom_bar(stat="identity", position = 'dodge') + coord_flip() +
+geom_hline(aes(yintercept = 2)) + geom_text(aes(1.5,2.5,label = 'Prima \n Histórica \n Bono \n 10 años \n USA 2%')) +
+    theme_minimal(base_size = 18)
+```
+Estos retornos son reales, y a 7 años.
+
+
+El tema principal a fines del 2015 es la divergencia entre la política monetaria de USA - tasa y crecimiento alto - contra el resto de los países.
+
+#### Temas del cuarto trimestre del 2015: las 6 'C'  
+
+
+Crédito - El costo de fondeo en los  mercados de 'high yield' están en máximos de los últimos 3 años, cerca de los niveles 2011. Los sectores más comprometidos son los de energía y mercados emergentes.  
+
+Currencies / monedas - La expectativa de suba de tasas en USA favoreció mucho al dólar. Pero hoy la expectativa es que la suba de tasas de produzca más adelante. Esto debería favorecer a mercados emergentes.  
+
+Comodities - El super-ciclo histórico sufre fuertes presiones, y el índice de materias primas está en su mínimo del 2008. Esto afecta el crédito.
+
+China - el gobierno interviene fuertemente para sostener el precio de los activos. La visión de largo plazo de China como sostén del crecimiento del mundo sigue presente, pero con dudas acerca de la veracidad de los números y de la capacidad de crecer al mismo ritmo en el futuro.
+
+Crudo - el revalúo de las reservas afecta negativamente el crédito, llevando la tasa de 'high yield' a 11% de 6% un año atrás. Los fondos soberanos - muchos de los cuales dependen de las exportaciones de petróleo - disminuyen su inversión, y hay países como Rusia cuyo costo fiscal necesita un precio del crudo de $100 vs $30 hoy. Como contrapartida al efecto negativo en emergentes, los mercados desarrollados 
+
+Corporate earnings - ganancias empresariales - la tendencia es a la baja, producto del bajo crecimiento mundial y de la fortaleza del dólar. Incluso las compañías del S&P 500 tienen la mitad de sus ganancias en otras monedas, y eso las perjudica.
+
+El año termina con la FED subiendo la tasa y el Banco Central Europeo buscando garantizar ser el prestamista de última instancia del mercado.
+
+--- 
+#### Primer trimestre del 2016
+
+Importante suba de los mercados de acciones, crédito y energía. No hay ningún cambio de expectativas macroeconómicas, pero si el mercado espera que la FED no suba la tasa tan rápido como pareció indicar en Diciembre. Un tema recurrente es que la Fed reacciona al mercado y el mercado a la FED, creando un loop de retro-alimentación. El mercado parece pensar que ante la duda la FED va a decidir no tocar la tasa.
+
+Pese a la baja de tasas, el sector financiero europeo - principalmente Italia y Alemania - siguen en una posición débil y preocupante.
+
+---
+#### Segundo trimestre del 2016
+
+Los movimientos de precios más importantes fueron positivos en crédito 'high yield', mercados emergentes y comodities (el petróleo subió 100%). La posible causa es el estancamiento del dólar, producto de que la FED no sube las tasas.
+
+Los activos que mejor funcionan son las acciones de 'growth', mercados emergentes, comodities, crédito no 'investment grade' y el bono largo americano, cuya tasa bajó de 2.5% a 2.1%. Eso significa una suba del 5%, lo cual sorprende a aquéllos que confían en una suba de tasas por parte de la FED.
+
+En este trimestre se produjo la votación del Brexit, que produjo una suba de la volatilidad en Estados Unidos del 15% a 25%. La libra sufrió un 'accidente': bajó 15%, es decir que el Reino Unido perdió 500.000 millones de dólares de PBI en una noche, el Vix subió 25% en un día.
+
+Las situaciones en las que el mercado sube porque hay liquidez y no por funamentals tienen algunas características en común: las valuaciones son altas; los institucionales, tienen mucho cash (y los perjudica la tasa real negativa); las opiniones de inversores macro como Soros es negativa; la validez de los hedge funds como inversión es cuestionada porque los activos de 'mercado' suben mucho y al mismo tiempo.
+
+Los indicadores macro de largo plazo dicen que: USA tiene más fortaleza económico; Europa no puede crecer; el leverage de las compañías de todo el mundo es alto; y el crecimiento del comercio en el mundo disminuyó a la mitad desde la crisis financiera del 2008.
+
+---
+#### Tercer trimestre del 2016
+
+  
+Las tasas de interés continúan a la baja. El sector financiero no recupera su valor - Deutsche Bank baja de $24 a $12 luego  de una caída del 90% desde el pico del 2007. Al mismo tiempo que los bancos centrales tratan de desapalancar las entidades financieras, las mismas pasan los test de estrés. En este trimestre se produce la 'guerra de multas' entre USA y Europa: Apple y Deutsche Bank son castigados con posibles multas de $14.000 millones de dóalres.
+
+Alguno fondos de 'real estate' en el Reino Unido no permiten que los inversores rescaten su dinero, lo que puede ser preocupante porque estos 'cepos' se usaron en USA en 2008.
+
+Los hechos geopolíticos importantes (intento de golpe en Turquía, etc...) no parecen afectar la visión alcista en activos de riesgo: USA ya no es importador de energía, peroes un gran 'importador' de tasa negativas.
+
+La volatilidad vuelve a un nivel de complacencia: pasa de 26% a 12%. La elección en USA tampoco afecta el tono 'pro-riesgo' del mercado, que puede estar fomentada por la política de no subir tasas. El mercado parece creer que el discurso de la FED es más político que económico.
+
+No obstante a la política de no tocar tasas, en USA los números de empleo son más fuertes que antes, lo que en general crea una expectativa de suba de las mismas. tasas.
+
+#### Cuarto trimestre del 2016
+
+Luego del resultado de la elección del 9 de noviembre, las presunciones del mercado son: suba de tasas y más endeudamiento en USA; menos trade y más presión sobre mercados emergentes; mejora para bancos, compañías utilities y de infraestructura; más demanda de activos seguros como bonos japoneses y franco suizo; menos impuestos para las corporaciones; mejor relación con Rusia y por ende mejores valor en sus acciones (esán 60% abajo del precio de 2011); mejoras en el sector de salud porque la administración demócrata tiene una actitud más confrontativo con él. Entre otros beneficiados está el Deutsche Bank y el resto de los bancos, inclusive los bancos quebrados en Italia. El S&P 500 subió 9% en el trimestre.
+
+la tasa de interés de USA subió de 1.5% a 2.5%. Esto produjo un evento muy importante: la mayor caída trimestral en el bono de 10 años desde 2002 hasta ahora, un 6%. Este número, que no parece mucho, es muy significativo y no es tomado en cuenta en muchos análisis que hace el mercado. El dólar sube un 10% en el trimestre y el Euro, que en la crisis financiera llegó a valer 1.6, hoy vale 1 contra el dólar.
+
+La inflación en USA llega a 1.7% o 2.1% sin comida y energía ; el desempleo es 5% (la mitad que en 2009).
+
+Por último, el índice 'price earnings' del s&P 500 es de 25x, contra una mediana histórica de 16.5x. El crecimiento anual de ganancias, empujada por el sector energía, está por debajo del promedio.
+

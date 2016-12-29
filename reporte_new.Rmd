@@ -1,0 +1,504 @@
+---
+title: "Informe de portafolio 2016"
+output:
+  html_document: default
+  html_notebook: default
+  pdf_document: default
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+```{r load packages}
+library(dplyr)
+library(tidyr)
+library(PerformanceAnalytics)
+library(ggplot2)
+library(ggrepel)
+library(scales)
+library(googleVis)
+library(RcppRoll)
+```
+
+```{r function: nice performance charts}
+cumReturns <- function(x){
+  require(dplyr)
+
+  x <- x %>%
+    select(date,ticker,value) %>%
+    filter(!(is.na(value))) %>%
+    mutate(logReturn = log(value + 1)) %>%
+    group_by(ticker) %>%
+    mutate(cumLogReturn = cumsum(logReturn)) %>%
+    mutate(value = exp(cumLogReturn) - 1)
+  return(x)
+}
+
+nicePlot <- function(x){
+  require(ggplot2)
+  require(ggrepel)
+  plot <- ggplot(x, aes(x = date, y = value, color = ticker)) +
+    geom_line() + theme_minimal(base_size = 18) +
+     scale_y_continuous(labels = percent) +
+    geom_text_repel(
+    data = subset(x, date == max(date)),
+    aes(label =  ticker),
+    size = 6,
+    segment.color = NA
+  ) + theme(legend.position = "none")
+  return(plot)
+}
+
+```
+
+```{r load data}
+library(dplyr)
+library(data.table)
+library(readxl)
+my_data <- readRDS('my_data.RDS')
+
+my_data$benchmarks <- as.data.table(my_data$benchmarks)
+nice_names <- as.data.table(read_excel('nice_names.xlsx'))
+my_data$benchmarks <- merge(my_data$benchmarks,nice_names,by.x = 'ticker',by.y = 'name',all.x = TRUE)
+my_data$benchmarks <- my_data$benchmarks[,nice_name := ifelse(is.na(nice_name),as.character(ticker),nice_name)]
+my_data$benchmarks <- my_data$benchmarks[,.(date,ticker =nice_name,variable,value)]
+
+```
+
+```{r define portfolios and strategies}
+familias <- c('TOTAL T+ L','Alfa Total','BETA', 'TESORERIA')
+hedge_fund <- c('FUTUROS ADMINISTRADOS', "VIX + STRANGLES")
+mercado <- c('MACROMODEL', 'PRIMAS DE MERCADO')
+```
+
+## Resultado del portafolio
+(todos los datos son a fines de Noviembre)
+
+
+El retorno del portafolio en el año 2016 es de -1.7%, y el retorno acumulado desde 2014 es de +9%. 
+
+El portafolio se divide en Hedge Fund, MacroModel y Mercado (que se ha encendido solo una parte hace 1 año). Los resultados de Hedge Fund y Macromodel para el 2016 son -4.3% y 0.7% respectivamente. Para el período 2014-2016 el retorno acumulado son de 24.2% y 0.4%
+
+```{r}
+portafolio_desc <- read.csv('images/descripciones.csv')
+knitr::kable(portafolio_desc)
+```
+
+## Resultado mensual y anual
+
+```{r pnl overview, fig.height= 6}
+
+curr_returns <- my_data$benchmarks %>% filter(ticker == "Portafolio Total") %>% select(date,value)
+curr_returns <- xts(curr_returns$value,curr_returns$date)
+names(curr_returns) <- 'Portafolio'
+knitr::kable(table.CalendarReturns(curr_returns['2014::']))
+```
+
+Resultado y alocación de capital por estrategia
+```{r tabla de detalle de portafolio}
+library(DT)
+library(scales)
+tabla <- data.frame(
+  Resultado.2016 = (c(-0.043,0.007,NA,-0.017)),
+  CapitalPromedio.2016 = (c(216,150,NA,371)),
+  Resultado.2014_2016 = (c(0.242,0.004,NA,0.09)),
+  CapitalPromedio.2014_2016 = (c(188,163,NA,368))
+)
+row.names(tabla) <- c('Hedge Fund','Macromodel','Mercado','Total')
+
+tabla %>%  datatable(options = list(dom='t',pageLength=100)) %>%  formatPercentage(c("Resultado.2016","Resultado.2014_2016"),digits=1) %>% 
+  formatCurrency(c('CapitalPromedio.2016','CapitalPromedio.2014_2016'),digits=0)
+
+
+```
+
+
+
+```{r}
+# Load benchmark grouping  definitions
+bmk_def <- read.csv('images/grupos de benchmarks.csv')
+```
+
+#### Resultado del portafolio
+```{r }
+chart_tickers <- bmk_def %>% filter(grupo == 1) %>% 
+  select(Benchmarks)
+
+chartSeries <- my_data$benchmarks %>%
+             filter(ticker %in% chart_tickers$Benchmarks) %>%
+              filter(date > '2013-12-31')
+  
+ cumReturns(chartSeries) %>% nicePlot()
+```
+
+
+#### Resultado de las estrategia Macromodel
+```{r}
+chart_tickers <- bmk_def %>% filter(grupo == 2) %>% 
+  select(Benchmarks)
+
+chartSeries <- my_data$benchmarks %>%
+             filter(ticker %in% chart_tickers$Benchmarks) %>%
+              filter(date > '2013-12-31')
+  
+ cumReturns(chartSeries) %>% nicePlot()
+```
+
+#### Resultado de la estrategia Hedge Fund
+```{r }
+chart_tickers <- bmk_def %>% filter(grupo == 3) %>% 
+  select(Benchmarks)
+
+chartSeries <- my_data$benchmarks %>%
+             filter(ticker %in% chart_tickers$Benchmarks) %>%
+              filter(date > '2013-12-31')
+  
+ cumReturns(chartSeries) %>% nicePlot()
+```
+
+#### Resultado de la sub estrategia de Futuros Administrados
+```{r }
+chart_tickers <- bmk_def %>% filter(grupo == 4) %>% 
+  select(Benchmarks)
+
+chartSeries <- my_data$benchmarks %>%
+             filter(ticker %in% chart_tickers$Benchmarks) %>%
+              filter(date > '2013-12-31')
+  
+ cumReturns(chartSeries) %>% nicePlot()
+```
+
+
+#### Resultado de la sub estrategia de Volatilidad
+```{r }
+chart_tickers <- bmk_def %>% filter(grupo == 5) %>% 
+  select(Benchmarks)
+
+chartSeries <- my_data$benchmarks %>%
+             filter(ticker %in% chart_tickers$Benchmarks) %>%
+              filter(date > '2013-12-31')
+  
+ cumReturns(chartSeries) %>% nicePlot()
+```
+
+----
+## Perfil de riesgo del portafolio
+```{r}
+roro <- my_data$roro  %>% filter(Periodo >= '2013-12-31') %>% 
+  group_by(Periodo,`Risk.Type`) %>%
+  summarise(Riesgo = sum(value)) %>%
+  ungroup()
+  
+names(roro) <- c('fecha','Perfil','value')
+roro$Perfil <- as.factor(roro$Perfil)
+levels(roro$Perfil) <- c('Neutral','Conservador','Pro Mercado')
+  
+ ggplot(roro, aes(x = fecha, y = value, fill = Perfil)) +
+   geom_area( position = 'fill', alpha = 0.8) + theme_minimal(base_size = 18)
+  
+```
+
+
+### Margen y Apalancamiento
+
+```{r}
+library(googleVis)
+op <- options(gvis.plot.tag='chart')
+```
+
+
+```{r results='asis', tidy=TRUE}
+calendar_plot <- my_data$metricas %>% filter(NombreFamilia == 'TOTAL T+ L') %>%
+  select(Fecha,Leverage_Ratio) %>% 
+  mutate(Leverage_Ratio = round(Leverage_Ratio,2))
+
+cl2 <- gvisCalendar(calendar_plot %>% filter( Fecha >'2015-12-31'),
+                    datevar="Fecha", numvar="Leverage_Ratio",
+                    options = list (width = 1000, height = 180,
+                                    title ='Leverage del Portfolio'))
+#plot(cl2)
+```
+
+```{r results='asis', tidy=TRUE}
+
+calendar_plot <- my_data$metricas %>% 
+  filter(NombreFamilia %in% c( 'TOTAL T+ L','Alfa Total')  &
+        Fecha > '2013-12-31' & Fecha <= '2016-12-22') %>%    select(Fecha,Margen_Over_Equity_Ratio,Leverage_Ratio,NombreFamilia) %>% 
+  mutate(Margen_Over_Equity_Ratio = Margen_Over_Equity_Ratio * 100) %>% 
+  mutate(NombreFamilia = if_else(NombreFamilia == 'TOTAL T+ L',' Portafolio Total', if_else(NombreFamilia == 'Alfa Total','Hedge Fund',NombreFamilia)))
+
+colnames(calendar_plot) <- c('Fecha','Margen','Apalancamiento','Nombre')
+
+
+calendar_plot <-calendar_plot %>%  gather(variable,value,Margen, Apalancamiento) %>%  mutate(variable = if_else(variable == 'Margen',' Margen',variable) )
+
+
+ggplot(calendar_plot,aes(Fecha,value))+facet_wrap(variable~Nombre,
+  scales = 'free',ncol = 2) +  geom_line() + theme_minimal() + 
+   theme(text = element_text(size=20)) 
+
+#cl2 <- gvisCalendar(calendar_plot %>% filter( Fecha >'2015-12-31'),
+ #                   datevar="Fecha", numvar="Margen",
+  #                  options = list (width = 1000, height = 180,
+  #                                  title ='Margen del Portfolio'))
+#plot(cl2)
+```
+
+```{r results='asis', tidy=TRUE}
+
+
+#cl2 <- gvisCalendar(calendar_plot %>% filter( Fecha >'2015-12-31'),
+ #                   datevar="Fecha", numvar="Margen",
+  #                  options = list (width = 1000, height = 180,
+  #                                  title ='Margen del Portfolio'))
+#plot(cl2)
+```
+
+## Rentabilidad del portafolio, acumulado del año
+
+NOTA: En estos gráficos se ven los resultados acumulados. Cuánto más oscuro, mayor es la magnitud. Azul es resultado positivo y rojo negativo. Arriba a la derecha están los valores máximos y mínimos.
+```{r results='asis', tidy=TRUE}
+curr_strat <- familias[1]
+
+# calendar heatmap pnl diario
+calendar_plot <- my_data$pnl %>% filter(NombreFamilia == curr_strat) %>%
+  select(Fecha,RentDiaria) %>% 
+  filter( Fecha >'2013-12-31') %>%
+  mutate(RentDiaria = round(RentDiaria / 1000000,2)) %>%
+  mutate(RentDiaria = cumsum(RentDiaria))
+
+cl1 <- gvisCalendar(calendar_plot,
+                    datevar="Fecha", numvar="RentDiaria",
+                    options = list (width = 1000, height = 750,
+                    title = 'Portafolio'))
+plot(cl1)
+```  
+
+```{r results='asis', tidy=TRUE}
+curr_strat <- familias[3]
+
+# calendar heatmap pnl diario
+calendar_plot <- my_data$pnl %>% filter(NombreFamilia == curr_strat) %>%
+  select(Fecha,RentDiaria) %>% 
+  filter( Fecha >'2015-12-31') %>%
+  mutate(RentDiaria = round(RentDiaria / 1000000,2)) %>%
+  mutate(RentDiaria = cumsum(RentDiaria))
+
+cl1 <- gvisCalendar(calendar_plot,
+                    datevar="Fecha", numvar="RentDiaria",
+                    options = list (width = 1000, height = 225,
+                    title = 'Mercado'))
+plot(cl1)
+```  
+
+```{r results='asis', tidy=TRUE}
+curr_strat <- familias[4]
+
+# calendar heatmap pnl diario
+calendar_plot <- my_data$pnl %>% filter(NombreFamilia == curr_strat) %>%
+  select(Fecha,RentDiaria) %>% 
+  filter( Fecha >'2015-12-31') %>%
+  mutate(RentDiaria = round(RentDiaria / 1000000,2)) %>%
+  mutate(RentDiaria = cumsum(RentDiaria))
+
+cl1 <- gvisCalendar(calendar_plot,
+                    datevar="Fecha", numvar="RentDiaria",
+                    options = list (width = 1000, height = 225,
+                    title = 'Tesorería'))
+plot(cl1)
+```  
+
+```{r results='asis', tidy=TRUE}
+curr_strat <- familias[2]
+
+# calendar heatmap pnl diario
+calendar_plot <- my_data$pnl %>% filter(NombreFamilia == curr_strat) %>%
+  select(Fecha,RentDiaria) %>% 
+  filter( Fecha >'2015-12-31') %>%
+  mutate(RentDiaria = round(RentDiaria / 1000000,2)) %>%
+  mutate(RentDiaria = cumsum(RentDiaria))
+
+cl1 <- gvisCalendar(calendar_plot,
+                    datevar="Fecha", numvar="RentDiaria",
+                    options = list (width = 1000, height = 225,
+                    title = 'Hedge Fund'))
+plot(cl1)
+```  
+
+
+```{r results='asis', tidy=TRUE}
+
+curr_strat <- hedge_fund[1]
+
+# calendar heatmap pnl diario
+calendar_plot <- my_data$pnl %>% filter(NombreFamilia == curr_strat) %>%
+  select(Fecha,RentDiaria) %>% 
+  filter( Fecha >'2015-12-31') %>%
+  mutate(RentDiaria = round(RentDiaria / 1000000,2)) %>%
+  mutate(RentDiaria = cumsum(RentDiaria))
+
+cl1 <- gvisCalendar(calendar_plot,
+                    datevar="Fecha", numvar="RentDiaria",
+                    options = list (width = 1000, height = 225,
+                                    title = 'Futuros Administrados'))
+plot(cl1)
+``` 
+
+
+```{r results='asis', tidy=TRUE}
+
+curr_strat <- hedge_fund[2]
+
+# calendar heatmap pnl diario
+calendar_plot <- my_data$pnl %>% filter(NombreFamilia == curr_strat) %>%
+  select(Fecha,RentDiaria) %>% 
+  filter( Fecha >'2015-12-31') %>%
+  mutate(RentDiaria = round(RentDiaria / 1000000,2)) %>%
+  mutate(RentDiaria = cumsum(RentDiaria))
+
+cl1 <- gvisCalendar(calendar_plot,
+                    datevar="Fecha", numvar="RentDiaria",
+                    options = list (width = 1000, height = 240,
+                                    title = 'Volatilidad'))
+plot(cl1)
+```
+
+```{r}
+retorno_total <- 0.09
+asset_classes <- unique(my_data$bulk$AT13)
+remove_classes <- c("Money Markets",
+                    "Cash",
+                    "Settlements & Others",
+                    "Managed Futures",
+                    "Commodities",
+                    "N/A",
+                    "Trend Following",
+                    "")
+
+trades <- my_data$bulk  %>% filter(!(AT13 %in% remove_classes)) %>%  select(Periodo,Cantidad,Resultado,AT12,AT13) %>% 
+  group_by(Periodo,AT12,AT13) %>% 
+  summarise(Cantidad = sum(Cantidad), Resultado = sum(Resultado)) %>% 
+  mutate(Direction = if_else(Cantidad >0,'Long',if_else(Cantidad<0, 'Short','?'))) %>% ungroup() %>% group_by(AT12,AT13) %>% 
+  mutate(Dir = shift(Cantidad,type = 'lag')) %>% 
+  mutate(New_Direction = if_else(Cantidad == 0 & Dir < 0, ) 
+  
+
+
+bulk_asset_classes <- my_data$bulk %>% filter(!(AT13 %in% remove_classes))%>% select(Periodo,AT13,Resultado,Cantidad) %>%
+  filter(Periodo >'2013-12-31') %>%
+  ### Join Equities with Volatility
+  
+  mutate(AT13=if_else(AT13 == 'Volatility','Equities',AT13)) %>% 
+  #mutate(Direccion = if_else(Cantidad <= 0 ,'Short','Long')) %>% 
+  #mutate(AT13=paste(AT13,Direccion,sep = ' / ')) %>% 
+  group_by(AT13) %>%
+  summarise(RentDiaria = sum(Resultado)) %>% 
+  mutate(perc = RentDiaria / sum(RentDiaria)) %>% 
+  mutate(att = perc*retorno_total)
+ 
+ggplot(bulk_asset_classes,aes(reorder(AT13,att),att),alpha=0.5) + geom_bar(stat='identity',fill="lightblue", colour="lightblue") + 
+  coord_flip() + theme_minimal() + ylab('Performance') + xlab('Sector / Direccion') + scale_y_continuous(labels = scales::percent) +  theme(text = element_text(size=20)) 
+  
+
+
+
+```
+
+#### Rentabilidad por Clase de Activo
+Están ordenados de mayor a menor valor absoluto (no importa si son positivos o negativos). El objetivo es ver qué clase de activo impactó a la cartera en orden de importancia.
+
+```{r results='asis', tidy=TRUE}
+
+
+asset_classes <- unique(my_data$bulk$AT13)
+remove_classes <- c("Money Markets",
+                    "Cash",
+                    "Settlements & Others",
+                    "Managed Futures",
+                    "Commodities",
+                    "N/A",
+                    "Trend Following",
+                    "")
+#asset_classes <- asset_classes[!(asset_classes %in% remove_classes)]
+bulk_asset_classes <- my_data$bulk %>% select(Periodo,AT13,Resultado) %>%
+  filter(Periodo >'2013-12-31') %>%
+  ### Join Equities with Volatility
+  
+  mutate(AT13=if_else(AT13 == 'Volatility','Equities',AT13)) %>% 
+  group_by(Periodo,AT13) %>%
+  summarise(RentDiaria = sum(Resultado)) %>%
+  group_by(AT13) %>%
+  mutate(RentDiaria = cumsum(RentDiaria))
+
+### Join Equities with Volatility
+
+set_order <- bulk_asset_classes %>% filter(Periodo == max(Periodo)) %>% arrange(desc(abs(-RentDiaria))) %>% 
+  filter(!AT13 %in% remove_classes)
+
+bulk_roro_assets <- my_data$roro %>%
+  filter(Periodo >'2015-12-31') %>%
+  mutate(risk_direction = ifelse(`Risk.Type` == 'Risk On',1,-1)) %>%
+  mutate(value = value * risk_direction) %>%
+  group_by(Periodo,AT13) %>%
+  summarise(roro = sum(value))
+
+asset_classes <- unique(set_order$AT13)
+for(i in 1:length(asset_classes)){
+
+curr_strat <- asset_classes[i]
+
+# calendar heatmap pnl diario
+calendar_plot <- bulk_asset_classes %>% filter(AT13 == curr_strat) %>%
+  select(Periodo,RentDiaria) %>% 
+  filter( Periodo >'2013-12-31') %>%
+  mutate(RentDiaria = round(RentDiaria / 1000000,2))
+
+
+cl1 <- gvisCalendar(calendar_plot,
+                    datevar="Periodo", numvar="RentDiaria",
+                    options = list (width = 1000, height = 600,
+                                    title = paste(curr_strat,'PNL')))
+plot(cl1)
+
+calendar_plot <- bulk_roro_assets %>% filter(AT13 == curr_strat) %>%
+  select(Periodo,roro) %>%
+  filter( Periodo >'2015-12-31') %>%
+  mutate(risk = round(roro / 1000000,2)) %>%
+  mutate(risk = cumsum(risk))
+
+  # cl1 <- gvisCalendar(calendar_plot,
+  #                     datevar="Periodo", numvar="risk",
+  #                     options = list (width = 1000, height = 200,
+  #                                     title = paste(curr_strat,'Riesgo')))
+  # plot(cl1)
+
+}
+```  
+
+
+### Nuestros sistemas de tendencias versus comparables de la industria
+
+
+```{r fig.height= 8}
+library(scales)
+library(ggrepel)
+ggplot(my_data$barclays,aes( x = MaxDD ,  y = TIR, colour =Our, label = Name)) + geom_point() +
+  theme_bw() + theme(legend.position = 'none') + 
+  scale_y_continuous(labels=percent) + scale_x_continuous(labels= percent) +
+  ggrepel::geom_label_repel()
+
+```
+
+```{r}
+
+my_data$barclays %>% select(rank,Name,TIR,MaxDD,MAR) %>% 
+  arrange(desc(MAR)) %>% 
+  mutate(MAR = round(MAR,1),RetornoAnualizado=TIR,MaximaCaida = MaxDD)  %>%
+  select(rank,Name,RetornoAnualizado,MaximaCaida,MAR) %>% 
+  datatable(options = list(dom='t',pageLength=100),rownames = FALSE) %>% formatStyle('Name', target = 'row', backgroundColor = styleEqual(c('BREAKOUTS','DONCHIAN','BREAKOUTS+DONCHIAN'),
+      c('lightblue','lightblue','lightblue'))) %>% formatPercentage(c('RetornoAnualizado','MaximaCaida'))
+
+```
+

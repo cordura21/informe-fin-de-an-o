@@ -1,0 +1,146 @@
+---
+title: "R Notebook"
+output:
+  html_document: default
+  html_notebook: default
+---
+```{r Librerias}
+library(data.table)
+library(readxl)
+library(PerformanceAnalytics)
+```
+
+
+```{r}
+my_data <- readRDS('my_data.RDS')
+
+```
+
+```{r Juntar Data}
+# 
+# ## Join all data
+# ## Estructura date, ticker , variable , value
+# 
+# ## BBG ##
+# BBG <- readRDS('data\\data_bbg.RDS')
+# BBG <- BBG[,.(date,ticker=name,variable='rets',value=rets)]
+# 
+# ## Portafolio ##
+# Portafolio <- as.data.table(read_excel('data\\Curvas Macro, Vol y Tend Netas.xlsx',sheet = 'Hoja4'))
+# Portafolio$date <- as.Date(Portafolio$date)
+# Portafolio <- Portafolio[,rets:=TTR::ROC(value,type='discrete'),by='variable']
+# Portafolio <- Portafolio[,.(date,ticker=as.character(variable),variable='rets',value=rets)]
+# 
+# ## Fondos ##
+# Fondos <- as.data.table(read_excel('data\\Portafolio alfa de Terceros.xlsx',sheet = 'precios'))
+# Fondos <- melt.data.table(Fondos,id.vars = 'date')
+# Fondos$date <- as.Date(Fondos$date)
+# Fondos <- Fondos[,rets:=TTR::ROC(value,type='discrete'),by='variable']
+# Fondos <- Fondos[,.(date,ticker=as.character(variable),variable='rets',value=rets)]
+# 
+# ## Bmks y otros ##
+# Bmks <- as.data.table(read_excel('data\\retornos_monthly (netos).xlsx',sheet = 'rets_monthly'))[,1:4,with=F]
+# Bmks <- Bmks[variable %in% c('Indice de 5 Activos',"Indice de 5 Activos Ajustado",'Portafolio Alfa',
+#                              'Portafolio Total','Benchmark Volatilidad','Benchmark Alfa',"PBI G10 Real")]
+# Bmks <- Bmks[,.(date=as.Date(date),ticker =variable,variable = 'rets',value=as.numeric(rets))]
+# 
+# ## Join Data ##
+# all_data <- rbind(BBG,Portafolio,Fondos,Bmks)
+# 
+# unique(all_data$ticker)
+# saveRDS(all_data,'data\\datos_para_chart.RDS')
+
+
+```
+
+```{r Funcion}
+calc_rets <- function(period_dd,period_dd_max,period_ret,tickers_id){
+  
+  tickers <- series[[tickers_id]]
+  final_results <- NULL
+  for(iLoop in 1:length(tickers)){
+    
+    temp_ticker <- tickers[iLoop]
+    temp_data <- my_data$benchmarks[ticker == temp_ticker]
+    temp_data <- temp_data[complete.cases(temp_data)]
+    
+    if(nrow(temp_data)<1){
+      next()
+    }
+    xts_data <- as.xts.data.table(dcast.data.table(temp_data,date~ticker,value.var = 'value'))
+    dd <- maxDrawdown(xts_data[period_dd])
+    dd_hist <- maxDrawdown(xts_data[period_dd_max])
+    tir <- Return.annualized(xts_data[period_ret],scale =12)[1,1]
+    sd <- StdDev.annualized(xts_data[period_ret],scale=12)[1,1]
+    retorno <- Return.cumulative(xts_data[period_ret])[1,1]
+    min_date <- min(index(xts_data)) 
+    max_date <- max(index(xts_data)) 
+    Obs_dd <- nrow(xts_data[period_dd])
+    Obs_ret <- nrow(xts_data[period_ret])
+    temp_results <- data.table(Name = temp_ticker, Min_Date = min_date, Max_Date = max_date, Obs_dd,
+                               Obs_ret,TIR = tir, Retorno=retorno, MaxDD = dd, StdDev=sd, Sharpe = tir/sd, MAR = tir/abs(dd),
+                               Caida_Historica = dd_hist,date_ret = period_ret, date_dd = period_dd )
+    final_results <- rbind(final_results,temp_results)
+  }
+  return(final_results)
+}
+
+
+```
+
+```{r Intro}
+
+series <- list()
+series$bmk_mandato <- c('Portafolio Total','Indice de 5 Activos','Indice de 5 Activos Ajustado')
+series$bmk_mandato_comp <- c('Portafolio Total','Tasa Libre de Riesgo','S&P 500','Real Estate','Mercados Emergentes',
+             "Bono del Tesoro 10yr","Indice de Commodities")
+series$fondos_terceros <- c("Fut. Administrados (Neto)",'Lynx','Transtrend',
+                            'Indice de Futuros Administrados')
+series$bmk_otros <- c('Portafolio Total',"Acciones del Mundo","Portafolio Global 60/40","Fidelity Contrafund" ,
+                      "BlackRock Global Allocation Fund","Bonos Corporativos Inv. Grade","Índice de Hedge Funds",
+                      'Bonos Corporativos High Yield',"Tasa Libre de Riesgo")
+series$bmk_riesgo_estadistico <- c('Portafolio Alfa',"Benchmark Alfa","Indice de Hedge Funds",'Portafolio Alfa 3ros')
+series$bmk_tesoreria <- c("Macromodel Neto M. Fee","Indice de 5 Activos Ajustado",'Tesoreria')
+series$bmk_volatilidad <- c("Volatilidad (Neto)","Benchmark Volatilidad")
+series$conclusion <- c('Portafolio Total',"Inflacion USA","PBI G10 Real")
+
+```
+
+```{r Benchmark General}
+
+calc_rets(tickers_id  = 'bmk_mandato',period_ret = '2014::2016',period_dd = '2008::2016',period_dd_max='2008::')
+
+```
+
+```{r Componentes del Benchmark}
+calc_rets(tickers_id = 'bmk_mandato_comp',period_ret = '2014::2016',period_dd = '2008::2016',period_dd_max='2008::')
+```
+
+```{r Otros Benchmarks}
+calc_rets(tickers_id= 'bmk_otros',period_ret = '2014::2016',period_dd = '2008::2016',period_dd_max='2008::')
+```
+
+```{r Riesgo Estadístico}
+
+calc_rets(tickers_id= 'bmk_riesgo_estadistico',period_ret = '2014::2016',period_dd = '2008::2016',period_dd_max='2008::')
+
+```
+
+```{r Futuros Administrados }
+calc_rets(tickers_id= 'fondos_terceros',period_ret = '2014::2016',period_dd = '2008::2016',period_dd_max='2008::')
+
+## Agregar acá el DD con el backtest a mano, por ahora 
+
+```
+
+```{r Volatilidad}
+calc_rets(tickers_id= 'bmk_volatilidad',period_ret = '2014::2016',period_dd = '2008::2016',period_dd_max='2008::')
+```
+
+```{r MacroModel} 
+calc_rets(tickers_id= 'bmk_tesoreria',period_ret = '2014::2016',period_dd = '2008::2016',period_dd_max='2008::')
+```
+
+```{r Conclusion}
+calc_rets(tickers_id= 'conclusion',period_ret = '2014::2016',period_dd = '2008::2016',period_dd_max='2008::')
+```

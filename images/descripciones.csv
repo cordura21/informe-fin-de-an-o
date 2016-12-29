@@ -1,0 +1,14 @@
+Estrategia,Sub-Estrategia,Sistema,Activos
+Mercado, Primas,,Acciones de Países Desarrollados y Emergentes y Bonos Investment Grade de Desarrollados y Emergentes
+ , Value Absoluto,,Acciones que tengan Negocios Estables
+ , Value Relativo,,Acciones de US
+ , Situaciones Especiales,,"Acciones, Bonos, Monedas y Real Estate de países del mundo"
+Macromodel, ,,"Acciones US y Emergentes, Bono US, Real Estate US y Commodities"
+Hedge Fund, Futuros Admnistrados, Breakouts,"Bonos, Monedas y Commodities"
+ ,  , Donchian,"Bonos, Monedas y Commodities"
+ ,  , TSM,Commodities
+ ,  , Short Donchian,"Bonos, Monedas y Commodities"
+, Volatilidad, Vix Trend Following,Futuros y Opciones de la Volatilidad de las Acciones de US
+ ,  , Strangles en S&P 500,Opciones de Acciones de US
+,  , Strangles en Vix,Opciones de la Volatilidad de las Acciones de US
+ ,  ,,

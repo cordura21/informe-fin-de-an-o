@@ -1,0 +1,180 @@
+---
+title: "Retornos y Comparables 2014 / 2016"
+output:
+  html_document: default
+  html_notebook: default
+---
+
+```{r global_options, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8, fig.path='Figs/',
+                      echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+```{r Librerias}
+library(data.table)
+library(readxl)
+library(PerformanceAnalytics)
+library(dplyr)
+```
+
+```{r}
+my_data <- readRDS('my_data.RDS')
+my_data$benchmarks <- as.data.table(my_data$benchmarks)
+
+nice_names <- as.data.table(read_excel('nice_names.xlsx'))
+my_data$benchmarks <- merge(my_data$benchmarks,nice_names,by.x = 'ticker',by.y = 'name',all.x = TRUE)
+my_data$benchmarks <- my_data$benchmarks[,nice_name := ifelse(is.na(nice_name),as.character(ticker),nice_name)]
+my_data$benchmarks <- my_data$benchmarks[,.(date,ticker = nice_name,variable,value)]
+
+period_dd <- '2014::'
+period_ret <- '2014::'
+period_dd_max <- '2008::'
+
+```
+
+```{r Juntar Data}
+# 
+# ## Join all data
+# ## Estructura date, ticker , variable , value
+# 
+# ## BBG ##
+# BBG <- readRDS('data\\data_bbg.RDS')
+# BBG <- BBG[,.(date,ticker=name,variable='rets',value=rets)]
+# 
+# ## Portafolio ##
+# Portafolio <- as.data.table(read_excel('data\\Curvas Macro, Vol y Tend Netas.xlsx',sheet = 'Hoja4'))
+# Portafolio$date <- as.Date(Portafolio$date)
+# Portafolio <- Portafolio[,rets:=TTR::ROC(value,type='discrete'),by='variable']
+# Portafolio <- Portafolio[,.(date,ticker=as.character(variable),variable='rets',value=rets)]
+# 
+# ## Fondos ##
+# Fondos <- as.data.table(read_excel('data\\Portafolio alfa de Terceros.xlsx',sheet = 'precios'))
+# Fondos <- melt.data.table(Fondos,id.vars = 'date')
+# Fondos$date <- as.Date(Fondos$date)
+# Fondos <- Fondos[,rets:=TTR::ROC(value,type='discrete'),by='variable']
+# Fondos <- Fondos[,.(date,ticker=as.character(variable),variable='rets',value=rets)]
+# 
+# ## Bmks y otros ##
+# Bmks <- as.data.table(read_excel('data\\retornos_monthly (netos).xlsx',sheet = 'rets_monthly'))[,1:4,with=F]
+# Bmks <- Bmks[variable %in% c('Indice de 5 Activos',"Indice de 5 Activos Ajustado",'Portafolio Alfa',
+#                              'Portafolio Total','Benchmark Volatilidad','Benchmark Alfa',"PBI G10 Real")]
+# Bmks <- Bmks[,.(date=as.Date(date),ticker =variable,variable = 'rets',value=as.numeric(rets))]
+# 
+# ## Join Data ##
+# all_data <- rbind(BBG,Portafolio,Fondos,Bmks)
+# 
+# unique(all_data$ticker)
+# saveRDS(all_data,'data\\datos_para_chart.RDS')
+
+
+```
+
+```{r Funcion}
+calc_rets <- function(period_dd,period_dd_max,period_ret,tickers_id){
+  
+  tickers <- series[[tickers_id]]
+  final_results <- NULL
+  for(iLoop in 1:length(tickers)){
+    
+    temp_ticker <- tickers[iLoop]
+    temp_data <- my_data$benchmarks[ticker == temp_ticker]
+    temp_data <- temp_data[complete.cases(temp_data)]
+    
+    if(nrow(temp_data)<1){
+      next()
+    }
+    xts_data <- as.xts.data.table(dcast.data.table(temp_data,date~ticker,value.var = 'value'))
+    dd <- maxDrawdown(xts_data[period_dd])
+    dd_hist <- maxDrawdown(xts_data[period_dd_max])
+    tir <- Return.annualized(xts_data[period_ret],scale =12)[1,1]
+    sd <- StdDev.annualized(xts_data[period_ret],scale=12)[1,1]
+    retorno <- Return.cumulative(xts_data[period_ret])[1,1]
+    min_date <- min(index(xts_data)) 
+    max_date <- max(index(xts_data)) 
+    Obs_dd <- nrow(xts_data[period_dd])
+    Obs_ret <- nrow(xts_data[period_ret])
+    temp_results <- data.table(Name = temp_ticker,
+                               #Min_Date = min_date, 
+                               #Max_Date = max_date, 
+                               #Obs_dd,
+                               #Obs_ret,
+                               CAGR = round(tir*100,1),
+                               RetornoDirecto=round(retorno*100,1), 
+                               MaximaCaida = round(dd*100,1),
+                               Volatilidad=round(sd*100,1), 
+                               Sharpe = round(tir/sd,1), 
+                               MAR = round(tir/abs(dd),1),
+                               CaidaHistorica = round(dd_hist*100,1))
+                               #date_ret = period_ret, 
+                               #date_dd = period_dd )
+    final_results <- rbind(final_results,temp_results)
+  }
+  return(final_results)
+}
+
+
+```
+
+```{r Intro}
+
+series <- list()
+series$bmk_mandato <- c('Portafolio Total','Indice de 5 Activos','Indice de 5 Activos Ajustado','Inflacion USA','PBI G10 Real')
+series$bmk_mandato_comp <- c('Portafolio Total','S&P 500','Real Estate','Mercados Emergentes',
+             "Bono del Tesoro 10yr","Indice de Commodities")
+series$fondos_terceros <- c("Futuros Administrados",'Lynx','Transtrend',
+                            'Indice de Futuros Administrados','IPM')
+series$bmk_otros <- c('Portafolio Total',"Acciones del Mundo","Portafolio Global 60/40" ,
+                      "BlackRock Global Allocation Fund","Bonos Corporativos Inv. Grade","Índice de Hedge Funds",
+                      'Bonos Corporativos High Yield')
+series$bmk_riesgo_estadistico <- c('Hedge Fund',"Benchmark Hedge Fund","Indice de Hedge Funds",'Portafolio Hedge Fund 3ros')
+series$bmk_tesoreria <- c("Macromodel","Indice de 5 Activos Ajustado")
+series$bmk_volatilidad <- c("Volatilidad","Benchmark Volatilidad")
+
+```
+
+```{r Benchmark General}
+
+calc_rets(tickers_id  = 'bmk_mandato',period_ret = period_ret,period_dd = period_dd,period_dd_max= period_dd_max) %>% 
+  knitr::kable()
+
+```
+
+```{r Componentes del Benchmark}
+calc_rets(tickers_id = 'bmk_mandato_comp',period_ret = period_ret,period_dd = period_dd,period_dd_max= period_dd_max) %>%
+  knitr::kable()
+```
+
+```{r Otros Benchmarks}
+calc_rets(tickers_id= 'bmk_otros',period_ret = period_ret,period_dd = period_dd,period_dd_max= period_dd_max) %>%
+  knitr::kable()
+```
+
+```{r Riesgo Estadístico}
+
+## Cambio el DD y pongo el del backtest, segun el retornos netos anualizados de Confluence
+
+table1 <- calc_rets(tickers_id= 'bmk_riesgo_estadistico',period_ret = period_ret,period_dd = period_dd,period_dd_max= period_dd_max)
+table1[1,8] <- 14 
+  table1 %>% knitr::kable()
+
+```
+
+```{r Futuros Administrados }
+table2 <- calc_rets(tickers_id= 'fondos_terceros',period_ret = period_ret,period_dd = period_dd,period_dd_max= period_dd_max) 
+table2[1,8] <- 19  
+table2 %>% knitr::kable()
+
+```
+
+```{r Volatilidad}
+calc_rets(tickers_id= 'bmk_volatilidad',period_ret = period_ret,period_dd = period_dd,period_dd_max= period_dd_max) %>%
+  knitr::kable()
+```
+
+```{r MacroModel} 
+table3 <- calc_rets(tickers_id= 'bmk_tesoreria',period_ret = period_ret,period_dd = period_dd,period_dd_max= period_dd_max)
+table3[1,8] <- 11
+table3 %>% knitr::kable()
+  
+```
+
